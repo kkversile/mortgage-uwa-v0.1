@@ -1,0 +1,8 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/auth.service';
+
+@Component({selector:'app-operations-shell',standalone:true,imports:[CommonModule,RouterOutlet,RouterLink,RouterLinkActive],template:`
+<div class="app-shell"><aside class="sidebar"><div class="logo-row"><div class="brand-mark small">MU</div><div><b>Mortgage UWA</b><span>Lending operations</span></div></div><nav><a routerLink="/operations/dashboard" routerLinkActive="active">Overview</a><a routerLink="/operations/processor" routerLinkActive="active">Processor queue</a><a routerLink="/operations/applications" routerLinkActive="active">Applications</a><a routerLink="/operations/rules" routerLinkActive="active">Policy rules</a></nav><div class="sidebar-foot"><span class="pill">OPERATIONS PORTAL</span><button class="link-btn" (click)="auth.logout()">Sign out</button></div></aside><main class="main"><header class="topbar"><div><div class="eyebrow">Mortgage operations</div><h2>Enterprise lending workspace</h2></div><div class="user-chip"><div class="avatar">{{initials}}</div><div><b>{{auth.user()?.displayName}}</b><span>{{auth.user()?.roles?.join(' · ')||auth.user()?.role}}</span></div></div></header><section class="content"><div class="demo-banner wide">Synthetic borrower data, simulated provider results, and demonstration underwriting policy.</div><router-outlet></router-outlet></section></main></div>`})
+export class OperationsShellComponent { constructor(public auth:AuthService){} get initials(){return (this.auth.user()?.displayName||'U').split(' ').map(x=>x[0]).slice(0,2).join('');} }

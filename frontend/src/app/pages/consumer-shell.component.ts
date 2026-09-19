@@ -1,0 +1,8 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/auth.service';
+
+@Component({selector:'app-consumer-shell',standalone:true,imports:[CommonModule,RouterOutlet,RouterLink,RouterLinkActive],template:`
+<div class="app-shell consumer-shell"><aside class="sidebar"><div class="logo-row"><div class="brand-mark small">MU</div><div><b>Mortgage UWA</b><span>Borrower portal</span></div></div><nav><a routerLink="/consumer/dashboard" routerLinkActive="active">Overview</a><a routerLink="/consumer/application" routerLinkActive="active">My application</a><a routerLink="/consumer/documents" routerLinkActive="active">Documents</a><a routerLink="/consumer/tasks" routerLinkActive="active">Tasks & requests</a></nav><div class="sidebar-foot"><span class="pill">CONSUMER PORTAL</span><button class="link-btn" (click)="auth.logout()">Sign out</button></div></aside><main class="main"><header class="topbar"><div><div class="eyebrow">Borrower workspace</div><h2>Your mortgage journey</h2></div><div class="user-chip"><div class="avatar">{{initials}}</div><div><b>{{auth.user()?.displayName}}</b><span>Borrower</span></div></div></header><section class="content"><div class="demo-banner wide">Synthetic applicant data and simulated workflow for portfolio demonstration only.</div><router-outlet></router-outlet></section></main></div>`})
+export class ConsumerShellComponent { constructor(public auth:AuthService){} get initials(){return (this.auth.user()?.displayName||'U').split(' ').map(x=>x[0]).slice(0,2).join('');} }

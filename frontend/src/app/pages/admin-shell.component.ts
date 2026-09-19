@@ -1,0 +1,8 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/auth.service';
+
+@Component({selector:'app-admin-shell',standalone:true,imports:[CommonModule,RouterOutlet,RouterLink,RouterLinkActive],template:`
+<div class="app-shell admin-shell"><aside class="sidebar"><div class="logo-row"><div class="brand-mark small">MU</div><div><b>Mortgage UWA</b><span>Platform administration</span></div></div><nav><a routerLink="/admin/overview" routerLinkActive="active">Tenant overview</a><a routerLink="/admin/users" routerLinkActive="active">Users & memberships</a><a routerLink="/admin/branches" routerLinkActive="active">Branches</a><a routerLink="/admin/policies" routerLinkActive="active">Policies & products</a></nav><div class="sidebar-foot"><span class="pill">ADMIN PORTAL</span><button class="link-btn" (click)="auth.logout()">Sign out</button></div></aside><main class="main"><header class="topbar"><div><div class="eyebrow">Administration</div><h2>Tenant configuration</h2></div><div class="user-chip"><div class="avatar">{{initials}}</div><div><b>{{auth.user()?.displayName}}</b><span>Administrator</span></div></div></header><section class="content"><div class="demo-banner wide">Configuration and audit surfaces for this synthetic portfolio environment.</div><router-outlet></router-outlet></section></main></div>`})
+export class AdminShellComponent { constructor(public auth:AuthService){} get initials(){return (this.auth.user()?.displayName||'U').split(' ').map(x=>x[0]).slice(0,2).join('');} }

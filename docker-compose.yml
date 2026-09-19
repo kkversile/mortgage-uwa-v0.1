@@ -1,0 +1,20 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mortgage-uwa-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mortgage_uwa
+    ports:
+      # Keep this repository isolated when another local mysqld owns 3306.
+      - "3308:3306"
+    volumes:
+      - mortgage_uwa_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mortgage_uwa_mysql:

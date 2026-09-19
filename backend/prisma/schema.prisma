@@ -1,0 +1,563 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  LOAN_OFFICER
+  UNDERWRITER
+  UNDERWRITING_MANAGER
+  AUDITOR
+  READ_ONLY
+}
+
+enum AccountType {
+  INTERNAL
+  CONSUMER
+  PLATFORM_ADMIN
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum MembershipRole {
+  TENANT_ADMIN
+  LOAN_OFFICER
+  LOAN_PROCESSOR
+  UNDERWRITER
+  SENIOR_UNDERWRITER
+  UNDERWRITING_MANAGER
+  CLOSER
+  FUNDER
+  QC_REVIEWER
+  COMPLIANCE_OFFICER
+  AUDITOR
+  BRANCH_MANAGER
+  READ_ONLY
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ConditionStatus {
+  OPEN
+  DOCUMENT_RECEIVED
+  PROCESSOR_REVIEW
+  UNDERWRITER_REVIEW
+  SATISFIED
+  WAIVED
+}
+
+enum ApplicationStatus {
+  APPLICATION_STARTED
+  APPLICATION_SUBMITTED
+  DISCLOSURES_PENDING
+  INTENT_TO_PROCEED
+  PROCESSING
+  VERIFICATIONS_PENDING
+  READY_FOR_UNDERWRITING
+  UNDERWRITING
+  CONDITIONAL_APPROVAL
+  CONDITIONS_PENDING
+  CONDITIONS_REVIEW
+  FINAL_APPROVAL
+  CLEAR_TO_CLOSE
+  CLOSING
+  FUNDED
+  POST_CLOSING
+  COMPLETED
+  WITHDRAWN
+  DENIED
+  SUSPENDED
+  INCOMPLETE
+  DRAFT
+  DOCUMENTS_PENDING
+  DOCUMENT_PROCESSING
+  VERIFICATION_PENDING
+  CREDIT_PENDING
+  UNDERWRITING_READY
+  UNDER_REVIEW
+  MANUAL_REVIEW
+  ADDITIONAL_DOCUMENTS_REQUIRED
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+enum DocumentStatus {
+  UPLOADED
+  QUEUED
+  PROCESSING
+  PARSED
+  VERIFIED
+  FAILED
+  MANUAL_REVIEW_REQUIRED
+}
+
+enum Recommendation {
+  APPROVE
+  MANUAL_REVIEW
+  DECLINE
+}
+
+enum RuleOutcome {
+  PASS
+  REVIEW
+  DECLINE
+}
+
+enum DecisionType {
+  APPROVED
+  DECLINED
+  REQUEST_DOCUMENTS
+}
+
+enum RuleMetric {
+  CREDIT_SCORE
+  DTI_RATIO
+  LTV_RATIO
+}
+
+model User {
+  id                    String                @id @default(cuid())
+  email                 String                @unique
+  displayName           String
+  passwordHash          String
+  role                  Role
+  accountType           AccountType           @default(INTERNAL)
+  active                Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  applicationsCreated   MortgageApplication[] @relation("LoanOfficer")
+  applicationsAssigned  MortgageApplication[] @relation("Underwriter")
+  decisions             Decision[]
+  auditEvents           AuditEvent[]
+  memberships           TenantMembership[]
+  consumerApplications  MortgageApplication[] @relation("ConsumerOwner")
+  processedApplications MortgageApplication[] @relation("Processor")
+}
+
+model Tenant {
+  id             String                  @id @default(cuid())
+  code           String                  @unique
+  slug           String                  @unique
+  name           String
+  status         TenantStatus            @default(ACTIVE)
+  supportEmail   String?
+  supportPhone   String?
+  logoUrl        String?
+  brandingJson   Json?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  branches       Branch[]
+  channels       BusinessChannel[]
+  memberships    TenantMembership[]
+  applications   MortgageApplication[]
+  rules          UnderwritingRule[]
+  products       LoanProduct[]
+  sequences      TenantSequence[]
+  tasks          LoanTask[]
+  conditions     UnderwritingCondition[]
+  ausSubmissions AusSubmission[]
+}
+
+model Branch {
+  id           String                @id @default(cuid())
+  tenantId     String
+  code         String
+  name         String
+  city         String
+  state        String
+  active       Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships  TenantMembership[]
+  applications MortgageApplication[]
+
+  @@unique([tenantId, code])
+}
+
+model BusinessChannel {
+  id           String                @id @default(cuid())
+  tenantId     String
+  code         String
+  name         String
+  active       Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  applications MortgageApplication[]
+
+  @@unique([tenantId, code])
+}
+
+model TenantMembership {
+  id        String         @id @default(cuid())
+  tenantId  String
+  userId    String
+  branchId  String?
+  role      MembershipRole
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch    Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId, role])
+  @@index([userId, active])
+}
+
+model LoanProduct {
+  id            String   @id @default(cuid())
+  tenantId      String
+  code          String
+  name          String
+  productType   String
+  loanPurpose   String
+  active        Boolean  @default(true)
+  configuration Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loans         Loan[]
+
+  @@unique([tenantId, code])
+}
+
+model TenantSequence {
+  id        String   @id @default(cuid())
+  tenantId  String
+  year      Int
+  value     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, year])
+}
+
+model LoanTask {
+  id            String              @id @default(cuid())
+  tenantId      String
+  applicationId String
+  type          String
+  title         String
+  description   String
+  assignedToId  String?
+  priority      TaskPriority        @default(NORMAL)
+  status        TaskStatus          @default(OPEN)
+  dueAt         DateTime?
+  createdAt     DateTime            @default(now())
+  completedAt   DateTime?
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application   MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([applicationId, status])
+}
+
+model UnderwritingCondition {
+  id            String              @id @default(cuid())
+  tenantId      String
+  applicationId String
+  code          String
+  title         String
+  description   String
+  required      Boolean             @default(true)
+  status        ConditionStatus     @default(OPEN)
+  createdById   String?
+  satisfiedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application   MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  history       ConditionHistory[]
+
+  @@index([tenantId, status])
+  @@index([applicationId, status])
+}
+
+model ConditionHistory {
+  id          String                @id @default(cuid())
+  conditionId String
+  fromStatus  ConditionStatus?
+  toStatus    ConditionStatus
+  changedById String?
+  createdAt   DateTime              @default(now())
+  condition   UnderwritingCondition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+
+  @@index([conditionId, createdAt])
+}
+
+model AusSubmission {
+  id             String              @id @default(cuid())
+  tenantId       String
+  applicationId  String
+  provider       String
+  recommendation String
+  requestJson    Json
+  responseJson   Json
+  createdAt      DateTime            @default(now())
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application    MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, applicationId, createdAt])
+}
+
+model MortgageApplication {
+  id                  String            @id @default(cuid())
+  applicationNumber   String            @unique
+  status              ApplicationStatus @default(DRAFT)
+  requestedLoanAmount Decimal           @db.Decimal(14, 2)
+  loanPurpose         String
+  loanOfficerId       String?
+  underwriterId       String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  submittedAt         DateTime?
+  tenantId            String?
+  branchId            String?
+  channelId           String?
+  consumerUserId      String?
+  processorId         String?
+
+  loanOfficer          User?                   @relation("LoanOfficer", fields: [loanOfficerId], references: [id])
+  underwriter          User?                   @relation("Underwriter", fields: [underwriterId], references: [id])
+  tenant               Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  branch               Branch?                 @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  channel              BusinessChannel?        @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  consumerUser         User?                   @relation("ConsumerOwner", fields: [consumerUserId], references: [id], onDelete: SetNull)
+  processor            User?                   @relation("Processor", fields: [processorId], references: [id], onDelete: SetNull)
+  applicant            Applicant?
+  employment           Employment?
+  liabilities          Liability[]
+  assets               Asset[]
+  property             Property?
+  loan                 Loan?
+  documents            Document[]
+  creditReports        CreditReport[]
+  financialAssessments FinancialAssessment[]
+  underwritingRuns     UnderwritingRun[]
+  decisions            Decision[]
+  auditEvents          AuditEvent[]
+  tasks                LoanTask[]
+  conditions           UnderwritingCondition[]
+  ausSubmissions       AusSubmission[]
+}
+
+model Applicant {
+  id            String              @id @default(cuid())
+  applicationId String              @unique
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  dateOfBirth   DateTime?
+  address       String?
+  city          String?
+  state         String?
+  postalCode    String?
+  country       String              @default("USA")
+  application   MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Employment {
+  id                 String              @id @default(cuid())
+  applicationId      String              @unique
+  employmentType     String
+  employerName       String
+  jobTitle           String?
+  monthsEmployed     Int
+  annualIncome       Decimal             @db.Decimal(14, 2)
+  grossMonthlyIncome Decimal             @db.Decimal(14, 2)
+  otherMonthlyIncome Decimal             @default(0) @db.Decimal(14, 2)
+  application        MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Liability {
+  id                 String              @id @default(cuid())
+  applicationId      String
+  type               String
+  outstandingBalance Decimal             @db.Decimal(14, 2)
+  monthlyPayment     Decimal             @db.Decimal(14, 2)
+  application        MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Asset {
+  id            String              @id @default(cuid())
+  applicationId String
+  type          String
+  institution   String?
+  currentValue  Decimal             @db.Decimal(14, 2)
+  application   MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Property {
+  id             String              @id @default(cuid())
+  applicationId  String              @unique
+  address        String
+  propertyType   String
+  purchasePrice  Decimal             @db.Decimal(14, 2)
+  estimatedValue Decimal             @db.Decimal(14, 2)
+  occupancyType  String
+  application    MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Loan {
+  id            String              @id @default(cuid())
+  applicationId String              @unique
+  termMonths    Int
+  interestRate  Decimal             @db.Decimal(6, 3)
+  downPayment   Decimal             @db.Decimal(14, 2)
+  productName   String
+  loanProductId String?
+  loanProduct   LoanProduct?        @relation(fields: [loanProductId], references: [id], onDelete: SetNull)
+  application   MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id                String              @id @default(cuid())
+  applicationId     String
+  type              String
+  fileName          String
+  status            DocumentStatus      @default(UPLOADED)
+  storageKey        String?
+  extractedJson     Json?
+  verificationJson  Json?
+  processingVersion String              @default("1.0")
+  processedAt       DateTime?
+  processingError   String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  application       MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model CreditReport {
+  id              String              @id @default(cuid())
+  applicationId   String
+  provider        String              @default("MOCK_FICO")
+  creditScore     Int
+  riskBand        String
+  latePayments    Int                 @default(0)
+  openAccounts    Int                 @default(0)
+  utilizationPct  Decimal             @db.Decimal(6, 2)
+  outstandingDebt Decimal             @db.Decimal(14, 2)
+  retrievedAt     DateTime            @default(now())
+  application     MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  tradelines      CreditTradeline[]
+}
+
+model CreditTradeline {
+  id             String       @id @default(cuid())
+  creditReportId String
+  creditorName   String
+  accountType    String
+  balance        Decimal      @db.Decimal(14, 2)
+  creditLimit    Decimal?     @db.Decimal(14, 2)
+  monthlyPayment Decimal      @db.Decimal(14, 2)
+  latePayments   Int          @default(0)
+  status         String       @default("OPEN")
+  createdAt      DateTime     @default(now())
+  creditReport   CreditReport @relation(fields: [creditReportId], references: [id], onDelete: Cascade)
+
+  @@index([creditReportId])
+}
+
+model FinancialAssessment {
+  id                 String              @id @default(cuid())
+  applicationId      String
+  grossMonthlyIncome Decimal             @db.Decimal(14, 2)
+  monthlyDebt        Decimal             @db.Decimal(14, 2)
+  debtToIncomeRatio  Decimal             @db.Decimal(7, 3)
+  loanToValueRatio   Decimal             @db.Decimal(7, 3)
+  totalAssets        Decimal             @db.Decimal(14, 2)
+  calculatedAt       DateTime            @default(now())
+  application        MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model UnderwritingRule {
+  id               String     @id @default(cuid())
+  code             String
+  tenantId         String?
+  name             String
+  metric           RuleMetric
+  approveThreshold Decimal    @db.Decimal(10, 3)
+  reviewThreshold  Decimal    @db.Decimal(10, 3)
+  version          String     @default("2026.1")
+  enabled          Boolean    @default(true)
+  effectiveFrom    DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+  tenant           Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code, version])
+  @@index([tenantId, enabled])
+}
+
+model UnderwritingRun {
+  id             String              @id @default(cuid())
+  applicationId  String
+  recommendation Recommendation
+  policyVersion  String
+  engineVersion  String
+  inputSnapshot  Json
+  createdAt      DateTime            @default(now())
+  application    MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  evaluations    RuleEvaluation[]
+}
+
+model RuleEvaluation {
+  id                String          @id @default(cuid())
+  underwritingRunId String
+  ruleCode          String
+  inputValue        Decimal         @db.Decimal(14, 3)
+  outcome           RuleOutcome
+  explanation       String
+  underwritingRun   UnderwritingRun @relation(fields: [underwritingRunId], references: [id], onDelete: Cascade)
+}
+
+model Decision {
+  id                   String              @id @default(cuid())
+  applicationId        String
+  decidedById          String
+  finalDecision        DecisionType
+  systemRecommendation Recommendation?
+  reason               String
+  override             Boolean             @default(false)
+  createdAt            DateTime            @default(now())
+  application          MortgageApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  decidedBy            User                @relation(fields: [decidedById], references: [id])
+}
+
+model AuditEvent {
+  id            String               @id @default(cuid())
+  applicationId String?
+  userId        String?
+  action        String
+  entityType    String
+  entityId      String?
+  details       Json?
+  createdAt     DateTime             @default(now())
+  application   MortgageApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  user          User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
