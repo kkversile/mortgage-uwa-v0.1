@@ -184,14 +184,14 @@ export class DocumentProcessingService {
     const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageKey = `tenants/${app.tenantId}/applications/${app.applicationNumber}/${randomUUID()}-${safeName}`;
     await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: storageKey, Body: input.buffer, ContentType: input.mimeType, ServerSideEncryption: 'AES256' }));
-    const document = await this.prisma.$transaction(async tx => {
+    const { document, event } = await this.prisma.$transaction(async tx => {
       const created = await tx.document.create({ data: { applicationId: app.id, type: input.type || 'OTHER', fileName: input.fileName, status: DocumentStatus.QUEUED, storageKey, processingVersion: this.processingVersion } });
       const event: DocumentUploadedEvent = { eventType: 'DOCUMENT_UPLOADED', eventVersion: '2.0', tenantId: app.tenantId!, applicationId: app.id, documentId: created.id, documentType: created.type, bucket: this.bucket, objectKey: storageKey, processingVersion: '2.0', userId: input.userId };
-      await this.sqs.send(new SendMessageCommand({ QueueUrl: this.queueUrl, MessageBody: JSON.stringify(event), MessageAttributes: { eventType: { DataType: 'String', StringValue: event.eventType }, eventVersion: { DataType: 'String', StringValue: event.eventVersion } } }));
       await tx.mortgageApplication.update({ where: { id: app.id }, data: { status: 'DOCUMENT_PROCESSING' } });
       await tx.auditEvent.create({ data: { applicationId: app.id, userId: input.userId, action: 'DOCUMENT_UPLOADED', entityType: 'Document', entityId: created.id, details: { storage: 's3', bucket: this.bucket, objectKey: storageKey, eventVersion: event.eventVersion, tenantId: app.tenantId } } });
-      return created;
+      return { document: created, event };
     });
+    await this.sqs.send(new SendMessageCommand({ QueueUrl: this.queueUrl, MessageBody: JSON.stringify(event), MessageAttributes: { eventType: { DataType: 'String', StringValue: event.eventType }, eventVersion: { DataType: 'String', StringValue: event.eventVersion } } }));
     return document;
   }
 

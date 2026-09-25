@@ -41,7 +41,7 @@ CREATE TABLE `Branch` (
   `active` BOOLEAN NOT NULL DEFAULT true,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
-  UNIQUE INDEX `Branch_tenantId_code_key`(`tenantId`, `code`),
+  UNIQUE INDEX `Branch_tenantId_code_key`(`tenantId`(64), `code`(64)),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -53,7 +53,7 @@ CREATE TABLE `BusinessChannel` (
   `active` BOOLEAN NOT NULL DEFAULT true,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
-  UNIQUE INDEX `BusinessChannel_tenantId_code_key`(`tenantId`, `code`),
+  UNIQUE INDEX `BusinessChannel_tenantId_code_key`(`tenantId`(64), `code`(64)),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -67,7 +67,7 @@ CREATE TABLE `TenantMembership` (
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
   INDEX `TenantMembership_userId_active_idx`(`userId`, `active`),
-  UNIQUE INDEX `TenantMembership_tenantId_userId_role_key`(`tenantId`, `userId`, `role`),
+  UNIQUE INDEX `TenantMembership_tenantId_userId_role_key`(`tenantId`(64), `userId`(64), `role`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -82,7 +82,7 @@ CREATE TABLE `LoanProduct` (
   `configuration` JSON NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
-  UNIQUE INDEX `LoanProduct_tenantId_code_key`(`tenantId`, `code`),
+  UNIQUE INDEX `LoanProduct_tenantId_code_key`(`tenantId`(64), `code`(64)),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -93,12 +93,12 @@ CREATE TABLE `TenantSequence` (
   `value` INTEGER NOT NULL DEFAULT 0,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
-  UNIQUE INDEX `TenantSequence_tenantId_year_key`(`tenantId`, `year`),
+  UNIQUE INDEX `TenantSequence_tenantId_year_key`(`tenantId`(64), `year`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE INDEX `UnderwritingRule_tenantId_enabled_idx` ON `UnderwritingRule`(`tenantId`, `enabled`);
-CREATE UNIQUE INDEX `UnderwritingRule_tenantId_code_version_key` ON `UnderwritingRule`(`tenantId`, `code`, `version`);
+CREATE UNIQUE INDEX `UnderwritingRule_tenantId_code_version_key` ON `UnderwritingRule`(`tenantId`(64), `code`(64), `version`(64));
 
 -- Backfill legacy rows into the default tenant before adding foreign keys.
 INSERT INTO `Tenant` (`id`, `code`, `slug`, `name`, `status`, `createdAt`, `updatedAt`)

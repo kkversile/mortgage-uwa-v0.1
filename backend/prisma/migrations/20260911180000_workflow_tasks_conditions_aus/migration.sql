@@ -11,8 +11,8 @@ CREATE TABLE `LoanTask` (
   `dueAt` DATETIME(3) NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `completedAt` DATETIME(3) NULL,
-  INDEX `LoanTask_tenantId_status_idx`(`tenantId`, `status`),
-  INDEX `LoanTask_applicationId_status_idx`(`applicationId`, `status`),
+  INDEX `LoanTask_tenantId_status_idx`(`tenantId`(64), `status`),
+  INDEX `LoanTask_applicationId_status_idx`(`applicationId`(64), `status`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -29,8 +29,8 @@ CREATE TABLE `UnderwritingCondition` (
   `satisfiedAt` DATETIME(3) NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
-  INDEX `UnderwritingCondition_tenantId_status_idx`(`tenantId`, `status`),
-  INDEX `UnderwritingCondition_applicationId_status_idx`(`applicationId`, `status`),
+  INDEX `UnderwritingCondition_tenantId_status_idx`(`tenantId`(64), `status`),
+  INDEX `UnderwritingCondition_applicationId_status_idx`(`applicationId`(64), `status`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -41,7 +41,7 @@ CREATE TABLE `ConditionHistory` (
   `toStatus` ENUM('OPEN', 'DOCUMENT_RECEIVED', 'PROCESSOR_REVIEW', 'UNDERWRITER_REVIEW', 'SATISFIED', 'WAIVED') NOT NULL,
   `changedById` VARCHAR(191) NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX `ConditionHistory_conditionId_createdAt_idx`(`conditionId`, `createdAt`),
+  INDEX `ConditionHistory_conditionId_createdAt_idx`(`conditionId`(64), `createdAt`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -54,7 +54,7 @@ CREATE TABLE `AusSubmission` (
   `requestJson` JSON NOT NULL,
   `responseJson` JSON NOT NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  INDEX `AusSubmission_tenantId_applicationId_createdAt_idx`(`tenantId`, `applicationId`, `createdAt`),
+  INDEX `AusSubmission_tenantId_applicationId_createdAt_idx`(`tenantId`(64), `applicationId`(64), `createdAt`),
   PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

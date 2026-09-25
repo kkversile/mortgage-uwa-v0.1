@@ -13,7 +13,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "local-aws:init": "tsx scripts/init-local-aws.ts",
-    "worker:dev": "tsx scripts/document-worker.ts"
+    "local-aws:start": "python -m moto.server -H 127.0.0.1 -p 4566",
+    "worker:dev": "tsx scripts/document-worker.ts",
+    "worker:prod": "node dist/scripts/document-worker.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

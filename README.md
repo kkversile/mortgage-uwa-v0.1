@@ -22,7 +22,7 @@ Angular 6002 (consumer | operations | admin)
                     |
              NestJS modular API 7002
                     |
-              Prisma / MySQL 3308
+              Prisma / native MySQL 3306
                     |
         Floci S3 + SQS + DLQ 4566
                     |
@@ -45,8 +45,79 @@ Clean-room portfolio starter for a Mortgage Underwriting Assistant.
 
 ## Local setup
 
+The Docker Compose file remains available as an optional deployment artifact. The supported native Windows workflow below does not require Docker.
+
+## Native Windows Local Setup — No Docker
+
+Prerequisites:
+
+- Node.js 24.14.0 and npm 11.9.0 (the versions verified for this checkout)
+- Native WAMP MariaDB/MySQL on `127.0.0.1:3306`
+- Python 3.14+ with `moto[server]` installed
+- Tesseract OCR 5.4.0 at `C:\Program Files\Tesseract-OCR\tesseract.exe`
+- Poppler 25.07.0 with `pdftoppm.exe` on `PATH` (or set its full path in `backend/.env`)
+
+Floci is the repository’s LocalStack-compatible target, but its current Windows CLI starts a Docker container. For a no-Docker setup, this checkout uses the native `moto_server` S3/SQS emulator on the same endpoint and keeps the AWS SDK clients unchanged.
+
+Create the database once, without dropping existing data:
+
+```powershell
+& 'C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe' --host=127.0.0.1 --port=3306 --user=root --protocol=tcp -e "CREATE DATABASE IF NOT EXISTS mortgage_uwa"
+```
+
+Copy `backend/.env.example` to `backend/.env` and set the local MySQL password. Keep `DATABASE_URL` on port `3306`, `AWS_ENDPOINT_URL` on `http://127.0.0.1:4566`, and keep the detected OCR paths.
+
+Startup order:
+
+1. Start the WAMP MariaDB/MySQL service.
+2. Start the native AWS-compatible emulator:
+
+```powershell
+cd backend
+npm install
+npm run local-aws:start
+```
+
+3. In another terminal, initialize the bucket, queue, and DLQ (safe to repeat):
+
+```powershell
+cd backend
+npm run local-aws:init
+```
+
+4. In another terminal, prepare and start the backend:
+
+```powershell
+cd backend
+npm install
+npx prisma generate
+npx prisma migrate deploy
+npm run prisma:seed
+npm run start:dev
+```
+
+5. In another terminal, start the document worker:
+
+```powershell
+cd backend
+npm run worker:dev
+```
+
+6. In another terminal, build/start Angular:
+
+```powershell
+cd frontend
+npm install
+npm run build
+npm start
+```
+
+Native service endpoints are `http://localhost:6002`, `http://localhost:7002`, `http://localhost:7002/api/docs`, and `http://127.0.0.1:4566`.
+
+To shut down, press `Ctrl+C` in the Angular, NestJS, worker, and `local-aws:start` terminals. Stop the WAMP MariaDB service from WampServer when it is no longer needed. Do not run `prisma migrate reset`.
+
 ### 1. MySQL
-Create a database named `mortgage_uwa` in an existing MySQL server, or run the isolated repository service:
+Create a database named `mortgage_uwa` in an existing MySQL server, or run the isolated repository service (optional Docker path):
 
 ```bash
 docker compose up -d mysql
@@ -116,7 +187,7 @@ See `docs/ARCHITECTURE.md` and `infrastructure/terraform/README.md`.
 
 ## Local AWS document workflow
 
-The app uses the LocalStack-compatible service at `http://localhost:4566` with synthetic credentials from `backend/.env`. Ensure S3 and SQS are available, then run `npm run local-aws:init` once (it is idempotent). Start the local processing worker in a second terminal:
+The app uses the LocalStack-compatible service at `http://127.0.0.1:4566` with synthetic credentials from `backend/.env`. Ensure S3 and SQS are available, then run `npm run local-aws:init` once (it is idempotent). Start the local processing worker in a second terminal:
 
 ```bash
 cd backend
@@ -150,7 +221,7 @@ This project uses synthetic applicant data, mock credit information and demonstr
 
 Upload a PDF, JPG, or PNG from an application detail page. The API stores a private tenant/application object and publishes a versioned `DOCUMENT_UPLOADED` event. The worker first extracts PDF text with `pdf-parse`; if the text layer is empty, Poppler renders the page and local Tesseract OCR extracts it. Recognizable credit-score text updates the credit report and the protected download endpoint returns the original file.
 
-No LLM or paid cloud OCR is used by the local path. Tesseract is free and open source. Configure `TESSERACT_PATH` and `POPPLER_PATH` only when those executables are not on `PATH`.
+No LLM or paid cloud OCR is used by the local path. Tesseract is free and open source. Configure `TESSERACT_PATH` and `PDFTOPPM_PATH` only when those executables are not on `PATH`.
 
 Synthetic DOCX samples are in `fixtures/sample-documents`; convert them to PDF in Word or LibreOffice before upload:
 
